@@ -1,37 +1,30 @@
 <template>
   <v-container>
-    <v-card-title>
-      ATC Form
-    </v-card-title>
-    <v-text-field
-      v-model="contractAddress"
-      label="Address"
-      required
-    ></v-text-field>
-    <v-text-field
-      v-model="product"
-      disabled
-      label="Product"
-      required
-    ></v-text-field>
-    <v-text-field
-      v-model="price"
-      label="Price"
-      disabled
-      required
-    ></v-text-field>
-    <v-btn elevation="2" @click="setContract">Launch Auction</v-btn>
-    <div v-if="isDrizzleInitialized" id="app">
-      <h1>Sign the Guestbook</h1>
-      <drizzle-contract-form contractName="ATC" />
-      <h2>Guests:</h2>
-      <ul v-if="getNames">
-        <li v-for="(name, i) in getNames" :key="i">{{ utils.toUtf8(name) }}</li>
-      </ul>
-    </div>
-    <div v-else>
-      Loading application...
-    </div>
+    <template v-if="product.length">
+      <v-card-title>
+        ATC Form
+      </v-card-title>
+      <v-text-field
+        v-model="contractAddress"
+        label="Address"
+        disabled
+        required
+      ></v-text-field>
+      <v-text-field
+        v-model="product"
+        disabled
+        label="Product"
+        required
+      ></v-text-field>
+      <v-text-field
+        v-model="priceInEther"
+        label="Ether"
+        disabled
+        required
+      ></v-text-field>
+      <v-btn elevation="2" @click="buyCart">Buy Cart</v-btn>
+    </template>
+    <v-btn v-else elevation="2" @click="setContract">Find Auction</v-btn>
   </v-container>
 </template>
 
@@ -64,6 +57,9 @@ export default {
     },
     utils() {
       return this.drizzleInstance.web3.utils;
+    },
+    priceInEther() {
+      return this.price / 1000000000000000000;
     },
   },
   async created() {
@@ -103,18 +99,37 @@ export default {
   methods: {
     async setContract() {
       // this.drizzleInstance.contract
-      const price = await this.drizzleInstance.contracts.ATC.methods.price().call();
+      const price = await this.drizzleInstance.contracts.ATC.methods
+        .price()
+        .call();
+      const title = await this.drizzleInstance.contracts.ATC.methods
+        .title()
+        .call();
+      const address = await this.drizzleInstance.contracts.ATC.address;
+
+      this.price = price;
+      this.product = title;
+      this.contractAddress = address;
       // .storedData()
       // .call();
       // .price()
       // .send();
 
-      console.log({ price });
+      //   console.log({ price });
       //   let data = this.getContractData({
       //     contract: "ATC",
       //     method: "price",
       //   });
       //   console.log({ data });
+    },
+    async buyCart() {
+      //   console.log(this.drizzleInstance.web3.eth.accounts);
+      const [account] = await this.drizzleInstance.web3.eth.getAccounts();
+      console.log({ account });
+      //   console.log(address);
+      await this.drizzleInstance.contracts.ATC.methods
+        .createDeal()
+        .send({ from: account, value: this.price });
     },
   },
 };
