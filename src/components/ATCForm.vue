@@ -80,13 +80,21 @@
         <v-card-title>Add Slot</v-card-title>
         <v-card-text>
           <v-text-field
-            v-model="procurerAddress"
+            v-model="procurer.address"
+            :disabled="procurer.valid"
             label="Address of Procurer"
             required
           ></v-text-field>
+          <v-list>
+            <v-list-item-group v-model="procurer.selectedDrop" color="primary">
+              <v-list-item v-for="(drop, i) of procurer.drops" :key="i">
+                {{ drop.title }}
+              </v-list-item>
+            </v-list-item-group>
+          </v-list>
         </v-card-text>
         <v-card-actions>
-          <v-btn v-if="!procurerFound" @click="addNewDrop">
+          <v-btn v-if="!procurer.valid" @click="searchForProcurer">
             Find Procurer
           </v-btn>
           <v-btn v-else @click="addNewDrop">
@@ -95,6 +103,7 @@
         </v-card-actions>
       </v-card>
     </v-dialog>
+    <v-snackbar v-model="snackbar"> {{ snackbarMsg }} </v-snackbar>
   </v-container>
 </template>
 
@@ -116,12 +125,22 @@ export default {
       addingSlotDialog: false,
       procurerFound: false,
       selectedDrop: null,
+      selectedSlot: null,
+      selectedProcurerDrop: null,
+      snackbarMsg: "",
+      snackbar: false,
       product: "",
       freshUsername: "",
 
       contractAddress: "",
       userDrops: [],
       userSlots: [],
+      procurer: {
+        valid: false,
+        address: "",
+        drops: [],
+        selectedDrop: null,
+      },
       newDrop: {
         title: "",
         price: 0,
@@ -292,14 +311,26 @@ export default {
       console.log({ userDrops });
       this.userDrops = userDrops;
     },
-    async closeDrop() {
-      const results = await this.drizzleInstance.contracts.ATC.methods
-        .addDrop(this.newDrop.title, this.newDrop.price)
-        .send({ from: this.userData.address });
+    async searchForProcurer() {
+      try {
+        const results = await this.drizzleInstance.contracts.ATC.methods
+          .searchProcurerDrops(this.procurer.address)
+          .call();
+        if (!results.length) {
+          this.snackbarMsg = "Address is not running any slots right now";
+          this.snackbar = true;
+          return;
+        }
+        this.procurer.drops = results;
+        this.procurer.valid = true;
 
-      console.log({ results });
-      this.addingDropDialog = false;
-      await this.getUserDrops();
+        // console.log({ results });
+      } catch (error) {
+        this.snackbarMsg = "Failed to fetch address";
+        this.snackbar = true;
+      }
+      // this.addingDropDialog = false;
+      // await this.getUserDrops();
     },
   },
 };

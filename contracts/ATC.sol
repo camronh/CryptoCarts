@@ -72,4 +72,12 @@ contract ATC {
     function getDrops() public view returns (Drop[] memory) {
         return userDrops[msg.sender];
     }
+
+    function searchProcurerDrops(address _procurer)
+        public
+        view
+        returns (Drop[] memory)
+    {
+        return userDrops[_procurer];
+    }
 }
