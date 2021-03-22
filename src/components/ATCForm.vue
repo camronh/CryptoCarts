@@ -87,8 +87,12 @@
           ></v-text-field>
           <v-list>
             <v-list-item-group v-model="procurer.selectedDrop" color="primary">
-              <v-list-item v-for="(drop, i) of procurer.drops" :key="i">
-                {{ drop.title }}
+              <v-list-item
+                v-for="(drop, i) of procurer.drops"
+                :key="i"
+                @click="buyCart"
+              >
+                {{ drop.title }} - {{ drop.price }} Ether
               </v-list-item>
             </v-list-item-group>
           </v-list>
@@ -96,9 +100,6 @@
         <v-card-actions>
           <v-btn v-if="!procurer.valid" @click="searchForProcurer">
             Find Procurer
-          </v-btn>
-          <v-btn v-else @click="addNewDrop">
-            Create Drop
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -261,14 +262,18 @@ export default {
       //   console.log({ data });
     },
     async buyCart() {
-      //   console.log(this.drizzleInstance.web3.eth.accounts);
-      //   const [account] = await this.drizzleInstance.web3.eth.getAccounts();
-      const [account] = await web3.eth.getAccounts();
-      console.log({ account });
-      //   console.log(address);
-      await this.contract.methods
-        .createDeal()
-        .send({ from: account, value: this.price });
+      try {
+        const [account] = await web3.eth.getAccounts();
+        const { address, selectedDrop, drops } = this.procurer;
+        const results = await this.drizzleInstance.contracts.ATC.methods
+          .buySlot(address, selectedDrop)
+          .send({ from: account, value: drops[selectedDrop].price });
+
+        console.log(results);
+      } catch (error) {
+        this.snackbarMsg = "Slot purchase failed";
+        this.snackbar = true;
+      }
     },
     async registered() {
       try {
