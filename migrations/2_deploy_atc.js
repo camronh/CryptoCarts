@@ -1,5 +1,5 @@
 const ATC = artifacts.require("ATC");
 
 module.exports = function(deployer) {
-  deployer.deploy(ATC, "PS5", 100000);
+  deployer.deploy(ATC, "PS5", 1);
 };

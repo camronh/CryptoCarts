@@ -1,25 +1,26 @@
 pragma solidity ^0.7.0;
 
 
+
 contract ATC {
-    enum State { AWAITING_PAYMENT, FUNDS_ADDED, FAILED, SUCCESS, EXPIRED, COMPLETE }
-    State public currState;
-    address payable public customer;
-    address payable public procurer;
+    string public title;
     uint public price;
-    string public product;
-    // uint public bank = address(this).balance;
+    address payable public procurer;
+    enum State { OPEN, CLOSED }
+    State public currState;
+    DealStruct[] public deals; 
     
-    constructor(string memory _product, uint _price) {
-        procurer = msg.sender;
-        price = _price;
-        product = _product;
-        currState = State.AWAITING_PAYMENT;
+    
+    struct DealStruct {
+        address customer;
+        string status;
+        bool paid;
     }
+    DealStruct dealStruct;
     
-      
+       
     modifier onlyCustomer() {
-        require(msg.sender == customer, "Only the customer can call this method");
+        require(msg.sender != procurer, "Only the customer can call this method");
         _;
     }
     
@@ -30,32 +31,52 @@ contract ATC {
     
     
     
-    function deposit() public payable {
-        require(currState == State.AWAITING_PAYMENT, "Already Paid!");
-        require(msg.value == price, "Please send the exact price");
-        customer = msg.sender;
-        currState = State.FUNDS_ADDED;
+    constructor (string memory _title, uint _price){
+        title = _title;
+        procurer = msg.sender;
+        price = _price * 1000000000000000000;
+        currState = State.OPEN;
     }
     
-    function markSuccessful() public onlyProcurer {
-        require(currState == State.FUNDS_ADDED, "Not paid yet");
-        payable(procurer).transfer(address(this).balance);
+    
+    function createDeal () public payable onlyCustomer returns(uint){
+        require(currState == State.OPEN, "Auction Closed");
+        require(msg.value == price, "Please pay the exact amount");
+        // set the new instance
+        dealStruct = DealStruct(msg.sender, "Pending", false);
+        // push the auction address to auctions array
+        deals.push(dealStruct);
+        return(deals.length);
+    }
+    
+     function markSuccessful(uint dealIndex) public onlyProcurer {
+        require(deals[dealIndex].paid == false, "Already Paid out!!");
+        deals[dealIndex].status = "Success!";
+        
+        // TRANFERS WHOLLE BANK
+        
+        payable(procurer).transfer(price);
+        deals[dealIndex].paid = true;
         // procurer.transfer(address(this).balance);
-        currState = State.SUCCESS;
+        // currState = State.SUCCESS;
+        
     }
     
-    function markUnsuccessful() public onlyProcurer {
-        require(currState == State.FUNDS_ADDED, "Not paid yet");
-        payable(customer).transfer(address(this).balance);
-        currState = State.FAILED;
+    function markUnsuccessful(uint dealIndex) public onlyProcurer {
+        require(deals[dealIndex].paid == false, "Already Paid out!!");
+        deals[dealIndex].status = "Failed";
+        payable(deals[dealIndex].customer).transfer(price);
+        deals[dealIndex].paid = true;
     }
     
-    function getContractBank() public onlyProcurer returns(uint) {
-        return(address(this).balance);
+    function closeDrop() public onlyProcurer {
+        require(currState == State.OPEN, "Drop already closed");
+        currState = State.CLOSED;
     }
-
-
-    function getProductDetails() public returns(uint, string memory) {
-        return(price, product);
+    
+    function getBank() public onlyProcurer returns(uint) {
+        return(deals.length * price);
     }
+    
+   
 }
