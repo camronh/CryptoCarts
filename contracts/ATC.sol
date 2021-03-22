@@ -1,82 +1,75 @@
 pragma solidity ^0.7.0;
-
-
+pragma experimental ABIEncoderV2;
 
 contract ATC {
-    string public title;
-    uint public price;
-    address payable public procurer;
-    enum State { OPEN, CLOSED }
-    State public currState;
-    DealStruct[] public deals; 
-    
-    
-    struct DealStruct {
+    mapping(address => User) public userData;
+    mapping(address => Drop[]) public userDrops;
+    mapping(address => mapping(uint256 => Slot[])) public dropSlots;
+    enum Role {ADMIN, USER}
+    Role currentRole;
+
+    enum DropStatus {OPEN, CLOSED}
+    DropStatus dropStatus;
+
+    enum SlotStatus {PENDING, SUCCESS, FAILED}
+    SlotStatus slotStatus;
+
+    struct User {
+        string username;
+        Role role;
+    }
+
+    struct Drop {
+        string title;
+        uint256 price;
+        DropStatus dropStatus;
+    }
+
+    struct Slot {
         address customer;
-        string status;
-        bool paid;
+        bool paidOut;
+        SlotStatus slotStatus;
     }
-    DealStruct dealStruct;
-    
-       
-    modifier onlyCustomer() {
-        require(msg.sender != procurer, "Only the customer can call this method");
+
+    modifier adminOnly() {
+        require(userData[msg.sender].role == Role.ADMIN, "Admins only!");
         _;
     }
-    
-     modifier onlyProcurer() {
-        require(msg.sender == procurer, "Only the procurer can call this method");
-        _;
+
+    constructor(string memory _username) public {
+        userData[msg.sender] = User(_username, Role.ADMIN);
     }
-    
-    
-    
-    constructor (string memory _title, uint _price){
-        title = _title;
-        procurer = msg.sender;
-        price = _price * 1000000000000000000;
-        currState = State.OPEN;
+
+    function addUser(address _newUser, string memory _username)
+        public
+        adminOnly
+    {
+        userData[_newUser] = User(_username, Role.USER);
     }
-    
-    
-    function createDeal () public payable onlyCustomer returns(uint){
-        require(currState == State.OPEN, "Auction Closed");
-        require(msg.value == price, "Please pay the exact amount");
-        // set the new instance
-        dealStruct = DealStruct(msg.sender, "Pending", false);
-        // push the auction address to auctions array
-        deals.push(dealStruct);
-        return(deals.length);
+
+    function register(string memory _username) public {
+        userData[msg.sender] = User(_username, Role.USER);
     }
-    
-     function markSuccessful(uint dealIndex) public onlyProcurer {
-        require(deals[dealIndex].paid == false, "Already Paid out!!");
-        deals[dealIndex].status = "Success!";
-        
-        // TRANFERS WHOLLE BANK
-        
-        payable(procurer).transfer(price);
-        deals[dealIndex].paid = true;
-        // procurer.transfer(address(this).balance);
-        // currState = State.SUCCESS;
-        
+
+    function addDrop(string memory _title, uint256 _price) public {
+        // userData[_newUser] = User(_username, Role.USER);
+        userDrops[msg.sender].push(Drop(_title, _price, DropStatus.OPEN));
     }
-    
-    function markUnsuccessful(uint dealIndex) public onlyProcurer {
-        require(deals[dealIndex].paid == false, "Already Paid out!!");
-        deals[dealIndex].status = "Failed";
-        payable(deals[dealIndex].customer).transfer(price);
-        deals[dealIndex].paid = true;
+
+    function buySlot(address _procurerAddress, uint256 _dropIndex)
+        public
+        payable
+    {
+        require(
+            msg.value >= userDrops[_procurerAddress][_dropIndex].price,
+            "Please pay the exact price"
+        );
+        dropSlots[_procurerAddress][_dropIndex].push(
+            Slot(msg.sender, false, SlotStatus.PENDING)
+        );
     }
-    
-    function closeDrop() public onlyProcurer {
-        require(currState == State.OPEN, "Drop already closed");
-        currState = State.CLOSED;
+
+    function getDrops() public view returns (Drop[] memory) {
+        return userDrops[msg.sender];
     }
-    
-    function getBank() public onlyProcurer returns(uint) {
-        return(deals.length * price);
-    }
-    
-   
 }

@@ -1,38 +1,108 @@
 <template>
   <v-container>
-    <template v-if="product.length">
+    <template v-if="!attemptedLogin">
+      <v-btn elevation="2" @click="checkAccount">Check for Account!</v-btn>
+    </template>
+    <template v-if="unregisteredUser">
       <v-card-title>
-        ATC Form
+        Register
       </v-card-title>
       <v-text-field
-        v-model="contractAddress"
-        label="Address"
-        disabled
+        v-model="freshUsername"
+        label="Create a username"
         required
       ></v-text-field>
-      <v-text-field
-        v-model="product"
-        disabled
-        label="Product"
-        required
-      ></v-text-field>
-      <v-text-field
-        v-model="priceInEther"
-        label="Ether"
-        disabled
-        required
-      ></v-text-field>
-      <v-btn elevation="2" @click="buyCart">Buy Cart</v-btn>
+      <v-btn @click="register">
+        Sign Up!
+      </v-btn>
     </template>
-    <v-btn v-else elevation="2" @click="setContract">Find Auction</v-btn>
+    <template v-if="loggedIn">
+      <v-card>
+        <v-card-title>D R O P S</v-card-title>
+        <v-list>
+          <v-list-item-group v-model="selectedDrop" color="primary">
+            <v-list-item v-for="(drop, i) of userDrops" :key="i">
+              {{ drop.title }}
+            </v-list-item>
+          </v-list-item-group>
+        </v-list>
+        <v-card-actions>
+          <v-btn @click="addingDropDialog = true"
+            ><v-icon>mdi-plus</v-icon></v-btn
+          >
+          <!-- <v-btn :disabled="!selectedDrop" @click="closeDrop"
+            ><v-icon>mdi-minus</v-icon></v-btn
+          > -->
+        </v-card-actions>
+        <v-divider></v-divider>
+        <v-card-title>S L O T S</v-card-title>
+        <v-list>
+          <v-list-item-group v-model="selectedSlot" color="primary">
+            <v-list-item v-for="(slot, i) of userSlots" :key="i">
+              {{ slot.title }}
+            </v-list-item>
+          </v-list-item-group>
+        </v-list>
+        <v-card-actions>
+          <v-btn @click="addingSlotDialog = true"
+            ><v-icon>mdi-plus</v-icon></v-btn
+          >
+          <!-- <v-btn :disabled="!selectedDrop" @click="closeDrop"
+            ><v-icon>mdi-minus</v-icon></v-btn
+          > -->
+        </v-card-actions>
+      </v-card>
+    </template>
+    <v-dialog v-model="addingDropDialog">
+      <v-card>
+        <v-card-title>Create Drop</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="newDrop.title"
+            label="Title"
+            required
+          ></v-text-field>
+          <v-text-field
+            v-model="newDrop.price"
+            label="Price"
+            required
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn @click="addNewDrop">
+            Create Drop
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+    <v-dialog v-model="addingSlotDialog">
+      <v-card>
+        <v-card-title>Add Slot</v-card-title>
+        <v-card-text>
+          <v-text-field
+            v-model="procurerAddress"
+            label="Address of Procurer"
+            required
+          ></v-text-field>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn v-if="!procurerFound" @click="addNewDrop">
+            Find Procurer
+          </v-btn>
+          <v-btn v-else @click="addNewDrop">
+            Create Drop
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
   </v-container>
 </template>
 
 <script>
-// import web3 from "../../contracts/web3";
+import web3 from "../../contracts/web3";
 // import Web3 from "web3";
 
-// import ATCjson from "../contracts/ATC.json";
+import ATCjson from "../contracts/ATC.json";
 import { mapGetters } from "vuex";
 
 export default {
@@ -40,8 +110,27 @@ export default {
   data() {
     return {
       price: 0,
+      accountFound: false,
+      attemptedLogin: false,
+      addingDropDialog: false,
+      addingSlotDialog: false,
+      procurerFound: false,
+      selectedDrop: null,
       product: "",
+      freshUsername: "",
+
       contractAddress: "",
+      userDrops: [],
+      userSlots: [],
+      newDrop: {
+        title: "",
+        price: 0,
+      },
+      fetchSlot: {
+        address: "",
+      },
+      contract: {},
+      userData: {},
     };
   },
   computed: {
@@ -61,11 +150,22 @@ export default {
     priceInEther() {
       return this.price / 1000000000000000000;
     },
+    unregisteredUser() {
+      if (this.attemptedLogin && !this.loggedIn) return true;
+      else return false;
+    },
   },
   async created() {
+    const [account] = await web3.eth.getAccounts();
+    const userData = await this.drizzleInstance.contracts.ATC.methods
+      .userData(account)
+      .call();
+    console.log({ userData });
+    // this.userData = userData;
     // console.log(this.drizzleInstance.web3);
     // var Contract = require("web3-eth-contract");
     // console.log("Step 1");
+    // console.log(Contract);
     // var address = "0xe39e3CC3eE04E4dE9FA43336f5280e69BA05D807";
     // // set provider for all later instances to use
     // Contract.setProvider("ws://localhost:9545");
@@ -97,19 +197,38 @@ export default {
     // });
   },
   methods: {
+    async checkAccount() {
+      try {
+        const [account] = await web3.eth.getAccounts();
+        const userData = await this.drizzleInstance.contracts.ATC.methods
+          .userData(account)
+          .call();
+        console.log({ userData });
+        await this.getUserDrops();
+        this.attemptedLogin = true;
+        if (!userData.username.length) return;
+        this.userData = userData;
+        this.userData.address = account;
+        this.loggedIn = true;
+      } catch (e) {
+        console.log("Auth Error", e);
+        return false;
+      }
+    },
     async setContract() {
+      if (await this.loggedIn) return;
+      const Contract = new web3.eth.Contract(ATCjson.abi, this.contractAddress);
+
       // this.drizzleInstance.contract
-      const price = await this.drizzleInstance.contracts.ATC.methods
-        .price()
-        .call();
-      const title = await this.drizzleInstance.contracts.ATC.methods
-        .title()
-        .call();
-      const address = await this.drizzleInstance.contracts.ATC.address;
+
+      const price = await Contract.methods.price().call();
+      const title = await Contract.methods.title().call();
+      //   const address = await Contract.address;
 
       this.price = price;
       this.product = title;
-      this.contractAddress = address;
+      this.contract = Contract;
+      //   this.contractAddress = this.address;
       // .storedData()
       // .call();
       // .price()
@@ -124,12 +243,63 @@ export default {
     },
     async buyCart() {
       //   console.log(this.drizzleInstance.web3.eth.accounts);
-      const [account] = await this.drizzleInstance.web3.eth.getAccounts();
+      //   const [account] = await this.drizzleInstance.web3.eth.getAccounts();
+      const [account] = await web3.eth.getAccounts();
       console.log({ account });
       //   console.log(address);
-      await this.drizzleInstance.contracts.ATC.methods
+      await this.contract.methods
         .createDeal()
         .send({ from: account, value: this.price });
+    },
+    async registered() {
+      try {
+        const [account] = await web3.eth.getAccounts();
+        const userData = await this.drizzleInstance.contracts.ATC.methods
+          .userData(account)
+          .call();
+        console.log({ userData });
+        if (!userData.username.length) return false;
+        this.userData = userData;
+        this.userData.address = account;
+        return true;
+      } catch (e) {
+        console.log("Auth Error", e);
+        return false;
+      }
+    },
+    async register() {
+      // console.log(this.userData.address);
+      const [account] = await web3.eth.getAccounts();
+      // console.log(account);
+      const results = await this.drizzleInstance.contracts.ATC.methods
+        .register(this.freshUsername)
+        .send({ from: account });
+      console.log(results);
+    },
+    async addNewDrop() {
+      const results = await this.drizzleInstance.contracts.ATC.methods
+        .addDrop(this.newDrop.title, this.newDrop.price)
+        .send({ from: this.userData.address });
+
+      console.log({ results });
+      this.addingDropDialog = false;
+      await this.getUserDrops();
+    },
+    async getUserDrops() {
+      const userDrops = await this.drizzleInstance.contracts.ATC.methods
+        .getDrops()
+        .call();
+      console.log({ userDrops });
+      this.userDrops = userDrops;
+    },
+    async closeDrop() {
+      const results = await this.drizzleInstance.contracts.ATC.methods
+        .addDrop(this.newDrop.title, this.newDrop.price)
+        .send({ from: this.userData.address });
+
+      console.log({ results });
+      this.addingDropDialog = false;
+      await this.getUserDrops();
     },
   },
 };
