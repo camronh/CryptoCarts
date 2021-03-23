@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 contract ATC {
     mapping(address => User) public userData;
     mapping(address => Drop[]) public userDrops;
+    mapping(address => Slot[]) public userSlots;
     mapping(address => mapping(uint256 => Slot[])) public dropSlots;
     enum Role {ADMIN, USER}
     Role currentRole;
@@ -29,6 +30,9 @@ contract ATC {
         address customer;
         bool paidOut;
         SlotStatus slotStatus;
+        string slotID;
+        string title;
+        uint256 price;
     }
 
     modifier adminOnly() {
@@ -56,21 +60,42 @@ contract ATC {
         userDrops[msg.sender].push(Drop(_title, _price, DropStatus.OPEN));
     }
 
-    function buySlot(address _procurerAddress, uint256 _dropIndex)
-        public
-        payable
-    {
+    function buySlot(
+        address _procurerAddress,
+        uint256 _dropIndex,
+        string memory _slotID,
+        string memory _title
+    ) public payable {
         require(
             msg.value >= userDrops[_procurerAddress][_dropIndex].price,
             "Please pay the exact price"
         );
-        dropSlots[_procurerAddress][_dropIndex].push(
-            Slot(msg.sender, false, SlotStatus.PENDING)
+        Slot memory newSlot = Slot(
+            msg.sender,
+            false,
+            SlotStatus.PENDING,
+            _slotID,
+            _title,
+            msg.value
         );
+        dropSlots[_procurerAddress][_dropIndex].push(newSlot);
+        userSlots[msg.sender].push(newSlot);
     }
 
     function getDrops() public view returns (Drop[] memory) {
         return userDrops[msg.sender];
+    }
+
+    function getSlots() public view returns (Slot[] memory) {
+        return userSlots[msg.sender];
+    }
+
+    function getDropSlots(uint256 _dropIndex)
+        public
+        view
+        returns (Slot[] memory)
+    {
+        return dropSlots[msg.sender][_dropIndex];
     }
 
     function searchProcurerDrops(address _procurer)
