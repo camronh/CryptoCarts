@@ -1,5 +1,10 @@
 <template>
   <v-container>
+    <v-btn @click="refresh">
+      <v-icon>
+        mdi-refresh
+      </v-icon>
+    </v-btn>
     <template v-if="!attemptedLogin">
       <v-btn elevation="2" @click="checkAccount">Check for Account!</v-btn>
     </template>
@@ -20,7 +25,7 @@
       <v-card>
         <v-card-title>D R O P S</v-card-title>
         <v-list>
-          <v-list-item-group v-model="selectedDrop" color="primary">
+          <v-list-item-group v-model="selectedDrop" mandatory color="primary">
             <v-list-item
               v-for="(drop, i) of userDrops"
               :key="i"
@@ -28,7 +33,12 @@
             >
               {{ drop.title }}
               <v-dialog v-model="dropInfoDialog">
-                <SlotTable :drop="drop" :dropSlots="dropSlots" />
+                <SlotTable
+                  :drop="drop"
+                  :dropSlots="dropSlots"
+                  :account="userData.address"
+                  :dropIndex="selectedDrop"
+                />
               </v-dialog>
             </v-list-item>
           </v-list-item-group>
@@ -178,6 +188,7 @@ export default {
       dropInfoDialog: false,
       slotInfoDialog: false,
       procurerFound: false,
+      loggedIn: false,
       selectedDrop: null,
       selectedSlot: null,
       selectedProcurerDrop: null,
@@ -186,7 +197,7 @@ export default {
       product: "",
       freshUsername: "",
       dropSlots: [],
-      contractAddress: "",
+      contractAddress: "0x6410968594fd5341a74DE5DA89FF3e637d5b0190",
       userDrops: [],
       userSlots: [],
       procurer: {
@@ -232,6 +243,8 @@ export default {
     },
   },
   async created() {
+    // await this.setContract();
+    // console.log("Contract set");
     // const short = require("short-uuid");
     // console.log(short.generate());
     // const [account] = await web3.eth.getAccounts();
@@ -242,16 +255,20 @@ export default {
   },
   methods: {
     async checkAccount() {
+      // const atcContract = new web3.eth.Contract(
+      //   ATCjson.abi,
+      //   this.contractAddress
+      // );
       try {
         const [account] = await web3.eth.getAccounts();
         const userData = await this.drizzleInstance.contracts.ATC.methods
           .userData(account)
           .call();
         console.log({ userData });
-        await this.getUserDrops();
-        await this.getUserSlots();
+
         this.attemptedLogin = true;
         if (!userData.username.length) return;
+        await this.refresh();
         this.userData = userData;
         this.userData.address = account;
         this.loggedIn = true;
@@ -262,6 +279,7 @@ export default {
     },
 
     progressString(progress) {
+      console.log({ progress });
       switch (progress) {
         case "0":
           return "Pending...";
@@ -272,7 +290,7 @@ export default {
       }
     },
     async setContract() {
-      if (await this.loggedIn) return;
+      // if (await this.loggedIn) return;
       const Contract = new web3.eth.Contract(ATCjson.abi, this.contractAddress);
 
       // this.drizzleInstance.contract
@@ -308,7 +326,7 @@ export default {
 
         console.log(results);
         this.addingSlotDialog = false;
-        await this.getUserSlots();
+        await this.refresh();
       } catch (error) {
         this.snackbarMsg = "Slot purchase failed";
         this.snackbar = true;
@@ -366,6 +384,10 @@ export default {
         .call();
       console.log({ userSlots });
       this.userSlots = userSlots;
+    },
+    async refresh() {
+      await this.getUserDrops();
+      await this.getUserSlots();
     },
     async getDropSlots() {
       const dropSlots = await this.drizzleInstance.contracts.ATC.methods

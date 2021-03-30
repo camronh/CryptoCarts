@@ -1,0 +1,23 @@
+{
+    "dev": {
+        "awscloudformation": {
+            "AuthRoleName": "amplify-cryptocarts-dev-153826-authRole",
+            "UnauthRoleArn": "arn:aws:iam::723049199225:role/amplify-cryptocarts-dev-153826-unauthRole",
+            "AuthRoleArn": "arn:aws:iam::723049199225:role/amplify-cryptocarts-dev-153826-authRole",
+            "Region": "us-east-1",
+            "DeploymentBucketName": "amplify-cryptocarts-dev-153826-deployment",
+            "UnauthRoleName": "amplify-cryptocarts-dev-153826-unauthRole",
+            "StackName": "amplify-cryptocarts-dev-153826",
+            "StackId": "arn:aws:cloudformation:us-east-1:723049199225:stack/amplify-cryptocarts-dev-153826/2c3ff920-8ffd-11eb-a18c-0edd3867f3f1",
+            "AmplifyAppId": "d1m93vvicksuek"
+        },
+        "categories": {
+            "hosting": {
+                "amplifyhosting": {
+                    "appId": "d1m93vvicksuek",
+                    "type": "manual"
+                }
+            }
+        }
+    }
+}
