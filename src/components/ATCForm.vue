@@ -23,6 +23,8 @@
     </template>
     <template v-if="loggedIn">
       <v-card>
+        <v-card-title>Welcome {{ userData.username }}</v-card-title>
+
         <v-card-title>D R O P S</v-card-title>
         <v-list>
           <v-list-item-group v-model="selectedDrop" mandatory color="primary">
@@ -194,6 +196,7 @@ export default {
       selectedProcurerDrop: null,
       snackbarMsg: "",
       snackbar: false,
+      myAddress: null,
       product: "",
       freshUsername: "",
       dropSlots: [],
@@ -242,17 +245,7 @@ export default {
       else return false;
     },
   },
-  async created() {
-    // await this.setContract();
-    // console.log("Contract set");
-    // const short = require("short-uuid");
-    // console.log(short.generate());
-    // const [account] = await web3.eth.getAccounts();
-    // const userData = await this.drizzleInstance.contracts.ATC.methods
-    //   .userData(account)
-    //   .call();
-    // console.log({ userData });
-  },
+  async created() {},
   methods: {
     async checkAccount() {
       // const atcContract = new web3.eth.Contract(
@@ -260,17 +253,20 @@ export default {
       //   this.contractAddress
       // );
       try {
-        const [account] = await web3.eth.getAccounts();
+        const [address] = await web3.eth.getAccounts();
+        this.myAddress = address;
+        // console.log(this.myAddress);
         const userData = await this.drizzleInstance.contracts.ATC.methods
-          .userData(account)
+          .userData(this.myAddress)
           .call();
         console.log({ userData });
 
         this.attemptedLogin = true;
         if (!userData.username.length) return;
         await this.refresh();
-        this.userData = userData;
-        this.userData.address = account;
+        // await this.getUserDrops();
+        // this.userData = userData;
+        // this.userData.address = account;
         this.loggedIn = true;
       } catch (e) {
         console.log("Auth Error", e);
@@ -332,22 +328,6 @@ export default {
         this.snackbar = true;
       }
     },
-    async registered() {
-      try {
-        const [account] = await web3.eth.getAccounts();
-        const userData = await this.drizzleInstance.contracts.ATC.methods
-          .userData(account)
-          .call();
-        console.log({ userData });
-        if (!userData.username.length) return false;
-        this.userData = userData;
-        this.userData.address = account;
-        return true;
-      } catch (e) {
-        console.log("Auth Error", e);
-        return false;
-      }
-    },
     async register() {
       // console.log(this.userData.address);
       const [account] = await web3.eth.getAccounts();
@@ -360,7 +340,7 @@ export default {
     async addNewDrop() {
       const results = await this.drizzleInstance.contracts.ATC.methods
         .addDrop(this.newDrop.title, this.newDrop.price)
-        .send({ from: this.userData.address });
+        .send({ from: this.myAddress });
 
       console.log({ results });
       this.addingDropDialog = false;
@@ -378,16 +358,14 @@ export default {
       console.log({ userDrops });
       this.userDrops = userDrops;
     },
-    async getUserSlots() {
-      const userSlots = await this.drizzleInstance.contracts.ATC.methods
-        .getSlots()
-        .call();
-      console.log({ userSlots });
-      this.userSlots = userSlots;
-    },
     async refresh() {
       await this.getUserDrops();
-      await this.getUserSlots();
+      await this.getSlotIDs();
+      this.userData = await this.drizzleInstance.contracts.ATC.methods
+        .userData(this.myAddress)
+        .call();
+
+      // await this.getUserSlots();
     },
     async getDropSlots() {
       const dropSlots = await this.drizzleInstance.contracts.ATC.methods
@@ -396,6 +374,12 @@ export default {
       console.log({ dropSlots });
       this.dropSlots = dropSlots;
       this.dropInfoDialog = true;
+    },
+    async getSlotIDs() {
+      const slotIDs = await this.drizzleInstance.contracts.ATC.methods
+        .getUserSlotIDs()
+        .call();
+      console.log({ slotIDs });
     },
     async searchForProcurer() {
       try {
