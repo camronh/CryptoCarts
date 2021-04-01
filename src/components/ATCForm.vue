@@ -31,14 +31,14 @@
             <v-list-item
               v-for="(drop, i) of userDrops"
               :key="i"
-              @click="getDropSlots"
+              @click="getDropSlots(i)"
             >
               {{ drop.title }}
               <v-dialog v-model="dropInfoDialog">
                 <SlotTable
                   :drop="drop"
                   :dropSlots="dropSlots"
-                  :account="userData.address"
+                  :account="myAddress"
                   :dropIndex="selectedDrop"
                 />
               </v-dialog>
@@ -60,40 +60,40 @@
             <v-list-item
               v-for="(slot, i) of userSlots"
               :key="i"
-              @click="slotInfoDialog = true"
+              @click="getSlotData(slot)"
             >
-              {{ slot.title }}
+              {{ slot }}
               <v-dialog v-model="slotInfoDialog">
                 <v-card>
                   <v-card-title>Slot Info</v-card-title>
                   <v-card-text>
                     <v-text-field
-                      v-model="slot.title"
+                      v-model="slotInfo.title"
                       label="Title"
                       disabled
                     ></v-text-field>
                     <v-text-field
-                      v-model="slot.slotID"
+                      v-model="slotInfo.slotID"
                       label="Slot ID"
                       disabled
                     ></v-text-field>
                     <v-text-field
-                      v-model="slot.price"
+                      v-model="slotInfo.price"
                       label="Price"
                       disabled
                     ></v-text-field>
                     <v-text-field
-                      v-model="slot.paidOut"
+                      v-model="slotInfo.paidOut"
                       label="Paid Out"
                       disabled
                     ></v-text-field>
                     <v-text-field
-                      v-model="slot.paidOut"
+                      v-model="slotInfo.paidOut"
                       label="Paid Out"
                       disabled
                     ></v-text-field>
                     <v-text-field
-                      :value="progressString(slot.slotStatus)"
+                      :value="progressString(slotInfo.slotStatus)"
                       label="Status"
                       readonly
                       disabled
@@ -198,6 +198,7 @@ export default {
       snackbar: false,
       myAddress: null,
       product: "",
+      slotInfo: {},
       freshUsername: "",
       dropSlots: [],
       contractAddress: "0x6410968594fd5341a74DE5DA89FF3e637d5b0190",
@@ -367,19 +368,25 @@ export default {
 
       // await this.getUserSlots();
     },
-    async getDropSlots() {
-      const dropSlots = await this.drizzleInstance.contracts.ATC.methods
-        .getDropSlots(this.selectedDrop)
-        .call();
-      console.log({ dropSlots });
-      this.dropSlots = dropSlots;
+    async getDropSlots(dropIndex) {
+      // await this.refresh();
+      this.dropSlots = this.userDrops[dropIndex].slotIDs;
+      console.log(this.dropSlots);
       this.dropInfoDialog = true;
+      console.log({ dropIndex });
     },
     async getSlotIDs() {
-      const slotIDs = await this.drizzleInstance.contracts.ATC.methods
+      this.userSlots = await this.drizzleInstance.contracts.ATC.methods
         .getUserSlotIDs()
         .call();
-      console.log({ slotIDs });
+      // console.log({ slotIDs });
+    },
+    async getSlotData(slotID) {
+      this.slotInfo = await this.drizzleInstance.contracts.ATC.methods
+        .slots(slotID)
+        .call();
+      this.slotInfoDialog = true;
+      // console.log({ slotIDs });
     },
     async searchForProcurer() {
       try {

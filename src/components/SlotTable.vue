@@ -1,5 +1,5 @@
 <template>
-  <v-data-table :headers="headers" :items="dropSlots" class="elevation-1">
+  <v-data-table :headers="headers" :items="slots" class="elevation-1">
     <template v-slot:item.slotStatus="{ item }">
       <v-chip :color="yellow" dark>
         {{ slotStatusStr(item.slotStatus) }}
@@ -31,6 +31,7 @@ export default {
   props: ["drop", "dropIndex", "dropSlots", "account"],
   data() {
     return {
+      slots: [],
       headers: [
         {
           text: "Address",
@@ -49,6 +50,16 @@ export default {
     ...mapGetters("drizzle", ["drizzleInstance", "isDrizzleInitialized"]),
     ...mapGetters("contracts", ["getContractData"]),
   },
+  async created() {
+    await this.getSlots();
+  },
+
+  watch: {
+    async dropIndex() {
+      await this.getSlots();
+    },
+  },
+
   methods: {
     getColor(calories) {
       console.log(this.dropSlots[0].title);
@@ -72,41 +83,28 @@ export default {
       else return "mdi-close";
     },
     async markSuccessful(slot) {
-      console.log({ slot });
-      const slotIndex = this.dropSlots.indexOf(slot);
-      //   console.log(this.dropIndex);
-      //   const slotIndex = this.dropSlots.indexOf(slot);
-
-      console.log({ slotIndex });
-      //   console.log(this.selectedDrop);
-      //   console.log(this.drizzleInstance.contracts);
-      const results = await this.drizzleInstance.contracts.ATC.methods
-        .markSuccessful(this.dropIndex, slotIndex)
+      await this.drizzleInstance.contracts.ATC.methods
+        .markSuccessful(slot.slotID)
         .send({ from: this.account });
-      console.log(results);
+      await this.getSlots();
     },
     async markFailed(slot) {
-      console.log({ slot });
-      const slotIndex = this.dropSlots.indexOf(slot);
-      //   console.log(this.dropIndex);
-      //   const slotIndex = this.dropSlots.indexOf(slot);
-
-      console.log({ slotIndex });
-      //   console.log(this.selectedDrop);
-      //   console.log(this.drizzleInstance.contracts);
-      const results = await this.drizzleInstance.contracts.ATC.methods
-        .markFailed(this.dropIndex, slotIndex)
+      await this.drizzleInstance.contracts.ATC.methods
+        .markFailed(slot.slotID)
         .send({ from: this.account });
-      await this.getDropSlots();
-      console.log(results);
+
+      await this.getSlots();
     },
 
-    async getDropSlots() {
-      const dropSlots = await this.drizzleInstance.contracts.ATC.methods
-        .getDropSlots(this.dropIndex)
-        .call();
-      console.log({ dropSlots });
-      this.dropSlots = dropSlots;
+    async getSlots() {
+      this.slots = [];
+      for (let slotID of this.dropSlots) {
+        const slotData = await this.drizzleInstance.contracts.ATC.methods
+          .slots(slotID)
+          .call();
+        console.log({ slotData });
+        this.slots.push(slotData);
+      }
     },
   },
 };
