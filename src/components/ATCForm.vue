@@ -253,26 +253,21 @@ export default {
       //   ATCjson.abi,
       //   this.contractAddress
       // );
-      try {
-        const [address] = await web3.eth.getAccounts();
-        this.myAddress = address;
-        // console.log(this.myAddress);
-        const userData = await this.drizzleInstance.contracts.ATC.methods
-          .userData(this.myAddress)
-          .call();
-        console.log({ userData });
+      const [address] = await web3.eth.getAccounts();
+      this.myAddress = address;
+      // console.log(this.myAddress);
+      const userData = await this.drizzleInstance.contracts.ATC.methods
+        .userData(this.myAddress)
+        .call();
+      console.log({ userData });
 
-        this.attemptedLogin = true;
-        if (!userData.username.length) return;
-        await this.refresh();
-        // await this.getUserDrops();
-        // this.userData = userData;
-        // this.userData.address = account;
-        this.loggedIn = true;
-      } catch (e) {
-        console.log("Auth Error", e);
-        return false;
-      }
+      this.attemptedLogin = true;
+      if (!userData.username.length) return;
+      await this.refresh();
+      // await this.getUserDrops();
+      // this.userData = userData;
+      // this.userData.address = account;
+      this.loggedIn = true;
     },
 
     progressString(progress) {

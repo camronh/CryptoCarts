@@ -16,9 +16,9 @@ const options = {
       web3Contract: new web3.eth.Contract(
         ATC.abi,
         // Ropsten
-        // "0x96626531221FB784e0494B905ea08F95Ab02B0bE"
+        "0xDC7A2184449Aa2B32e83765a67eAE8D9CA4C2FdC"
         // Local
-        "0xD962a5F050A5F0a2f8dF82aFc04CF1afFE585082"
+        // "0x6712008CCD96751d586FdBa0DEf5495E0E22D904"
       ), // An instance of a Web3 contract
     },
   ],
